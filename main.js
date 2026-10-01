@@ -25,6 +25,22 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } },
 };
 
+/* mobile browsers fire resize when the address bar slides in and out;
+   heavy redraws only care about the width */
+function onWidthResize(fn, wait = 250) {
+  let w = innerWidth, t;
+  window.addEventListener('resize', () => {
+    if (innerWidth === w) return;
+    w = innerWidth;
+    clearTimeout(t); t = setTimeout(fn, wait);
+  }, { passive: true });
+}
+/* run cheap periodic work only while its element is on screen */
+function whenVisible(el, cb) {
+  if (!el) return;
+  new IntersectionObserver(es => es.forEach(e => cb(e.isIntersecting)), { rootMargin: '100px' }).observe(el);
+}
+
 /* ─────────────────────────────────────────────
    LOADER
    ───────────────────────────────────────────── */
@@ -57,12 +73,18 @@ function finishLoader() {
 const canvas = $('#scene');
 const ctx = canvas.getContext('2d');
 let W, H;
-function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+// smoke is blurry anyway: draw it at reduced resolution and let CSS scale it up
+const FOG_SCALE = isMobile ? 0.5 : 0.75;
+function resize() {
+  W = innerWidth; H = innerHeight;
+  canvas.width = Math.round(W * FOG_SCALE); canvas.height = Math.round(H * FOG_SCALE);
+  ctx.setTransform(FOG_SCALE, 0, 0, FOG_SCALE, 0, 0);
+}
 resize();
-window.addEventListener('resize', resize, { passive: true });
+onWidthResize(resize, 100);
 
 const rng = Z.rng(0xdeadbeef);
-const blobs = Array.from({ length: isMobile ? 8 : 15 }, () => ({
+const blobs = Array.from({ length: isMobile ? 5 : 12 }, () => ({
   x: rng() * 1920, y: rng() * 1080,
   r: 180 + rng() * 280,
   vx: (rng() - 0.5) * 0.18, vy: -0.05 - rng() * 0.12,
@@ -70,7 +92,7 @@ const blobs = Array.from({ length: isMobile ? 8 : 15 }, () => ({
   alpha: 0.012 + rng() * 0.022,
   warm: rng() < 0.35,
 }));
-const sparks = Array.from({ length: isMobile ? 26 : 60 }, () => ({
+const sparks = Array.from({ length: isMobile ? 18 : 45 }, () => ({
   x: rng() * 1920, y: rng() * 1080,
   vx: (rng() - 0.5) * 0.3, vy: -0.15 - rng() * 0.4,
   life: rng(), maxLife: 0.5 + rng() * 1.5,
@@ -78,13 +100,17 @@ const sparks = Array.from({ length: isMobile ? 26 : 60 }, () => ({
   hot: rng() < 0.7,
 }));
 
-let fogTime = 0;
-function drawFog() {
-  fogTime += 0.003;
+let fogTime = 0, fogLast = 0;
+function drawFog(now) {
+  requestAnimationFrame(drawFog);
+  // 30 fps is plenty for drifting smoke
+  if (now - fogLast < 32) return;
+  fogTime += 0.006 * Math.min(3, (now - fogLast) / 33 || 1);
+  fogLast = now;
   ctx.clearRect(0, 0, W, H);
   blobs.forEach(b => {
-    b.x += b.vx + Math.sin(fogTime + b.phase) * 0.12;
-    b.y += b.vy;
+    b.x += (b.vx + Math.sin(fogTime + b.phase) * 0.12) * 2;
+    b.y += b.vy * 2;
     if (b.y + b.r < -50) { b.y = H + b.r; b.x = rng() * W; }
     const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
     if (b.warm) {
@@ -101,9 +127,9 @@ function drawFog() {
     ctx.fill();
   });
   sparks.forEach(sp => {
-    sp.x += sp.vx + Math.sin(fogTime * 2 + sp.y * 0.01) * 0.15;
-    sp.y += sp.vy;
-    sp.life += 0.008;
+    sp.x += (sp.vx + Math.sin(fogTime * 2 + sp.y * 0.01) * 0.15) * 2;
+    sp.y += sp.vy * 2;
+    sp.life += 0.016;
     if (sp.life > sp.maxLife) {
       sp.x = rng() * W; sp.y = H + 20;
       sp.vx = (rng() - 0.5) * 0.3; sp.vy = -0.15 - rng() * 0.4;
@@ -112,15 +138,11 @@ function drawFog() {
     const t = sp.life / sp.maxLife;
     const alpha = Math.sin(t * Math.PI) * (sp.hot ? 0.3 : 0.12);
     if (alpha < 0.01) return;
-    const g2 = ctx.createRadialGradient(sp.x, sp.y, 0, sp.x, sp.y, sp.size * 3);
-    g2.addColorStop(0, sp.hot ? `rgba(240,170,80,${alpha})` : `rgba(220,80,60,${alpha})`);
-    g2.addColorStop(1, 'rgba(120,30,10,0)');
-    ctx.fillStyle = g2;
+    ctx.fillStyle = sp.hot ? `rgba(240,170,80,${alpha * 1.6})` : `rgba(220,80,60,${alpha * 1.6})`;
     ctx.beginPath();
-    ctx.arc(sp.x, sp.y, sp.size * 3, 0, Math.PI * 2);
+    ctx.arc(sp.x, sp.y, sp.size * 1.4, 0, Math.PI * 2);
     ctx.fill();
   });
-  requestAnimationFrame(drawFog);
 }
 
 /* ─────────────────────────────────────────────
@@ -200,7 +222,14 @@ function el(tag, attrs = {}, parent) {
 }
 function makeSvg(fig, w, h, label) {
   const svg = el('svg', { viewBox: `0 0 ${w} ${h}`, class: 'ink', role: 'img', 'aria-label': label });
-  fig.appendChild(svg);
+  // wide charts scroll sideways on phones; only the drawing scrolls, the caption stays put
+  let host = fig;
+  if (fig.classList.contains('scrolls')) {
+    host = document.createElement('div');
+    host.className = 'chart-scroll';
+    fig.appendChild(host);
+  }
+  host.appendChild(svg);
   return svg;
 }
 /* a pen line through points; drawn on reveal unless draw:false */
@@ -598,7 +627,7 @@ measureStrokes();
 const TICKER = [
   'memento mori', 'в мире каждую секунду умирают ~2 человека и рождаются ~4',
   'omnia mors aequat', 'слух, вероятно, уходит последним',
-  'vita brevis', 'углерод в твоём теле старше Солнца',
+  'vita brevis', 'углерод в твоём теле образовался в звёздах ещё до Солнца',
   'ars moriendi', 'живых сейчас — лишь ~7% от всех когда-либо рождённых',
   'mors certa, hora incerta', '80 лет — это ~4170 недель',
   'requiescat in pace',
@@ -606,13 +635,15 @@ const TICKER = [
 const tickerEl = $('#ticker');
 if (tickerEl) {
   tickerEl.textContent = TICKER + '   ✝   ' + TICKER;
-  let off = 0;
-  if (!noMotion) (function animTicker() {
-    const half = tickerEl.scrollWidth / 2;
-    off = half ? (off + 0.35) % half : 0;
-    tickerEl.style.transform = `translateX(calc(-50% - ${off}px))`;
+  // measure once (and on width change) — reading scrollWidth every frame forces layout
+  let off = 0, half = tickerEl.scrollWidth / 2, last = performance.now();
+  onWidthResize(() => { half = tickerEl.scrollWidth / 2; });
+  if (!noMotion) (function animTicker(now) {
+    off = half ? (off + 0.021 * Math.min(100, now - last)) % half : 0;
+    last = now;
+    tickerEl.style.transform = `translate3d(calc(-50% - ${off.toFixed(1)}px), 0, 0)`;
     requestAnimationFrame(animTicker);
-  })();
+  })(last);
 }
 
 /* ─────────────────────────────────────────────
@@ -621,8 +652,11 @@ if (tickerEl) {
 const atomEl = $('#atomStream');
 if (atomEl && !noMotion) {
   const BASE = atomEl.textContent + '   ·   ';
-  let ph = 0;
-  (function animAtoms() {
+  let ph = 0, on = false, timer = 0;
+  whenVisible(atomEl, v => { on = v; if (v && !timer) animAtoms(); });
+  function animAtoms() {
+    timer = 0;
+    if (!on) return;
     const rep = BASE.repeat(3);
     let out = '';
     for (let i = 0; i < rep.length; i++) {
@@ -631,8 +665,8 @@ if (atomEl && !noMotion) {
     }
     atomEl.innerHTML = out;
     ph++;
-    setTimeout(() => requestAnimationFrame(animAtoms), 220);
-  })();
+    timer = setTimeout(animAtoms, 220);
+  }
 }
 
 /* ─────────────────────────────────────────────
@@ -642,7 +676,10 @@ if (atomEl && !noMotion) {
 const YEAR_S = 365.25 * 24 * 3600;
 const DEATHS_PS = 62e6 / YEAR_S, BIRTHS_PS = 132e6 / YEAR_S;
 const liveD = $('#liveDeaths'), liveB = $('#liveBirths');
+let liveOn = false;
+whenVisible(liveD && liveD.closest('.live'), v => { liveOn = v; });
 setInterval(() => {
+  if (!liveOn) return;
   const s = (performance.now() - t0) / 1000;
   if (liveD) liveD.textContent = fmt(Math.floor(s * DEATHS_PS));
   if (liveB) liveB.textContent = fmt(Math.floor(s * BIRTHS_PS));
@@ -719,13 +756,13 @@ function drawWeeks() {
   const facts = leftWeeks > 0 ? [
     [fmt(livedWeeks), `недель прожито — ${fmt(Math.min(100, livedYears / life * 100))}% листа`],
     [fmt(leftWeeks), `недель до горизонта в ${life} лет`],
-    [fmt(Math.floor(leftYears)), 'лет — столько раз ещё будет лето'],
+    [fmt(Math.floor(leftYears)), 'столько ещё раз будет лето'],
     [fmt(Math.round(leftYears * 12.37)), 'полнолуний впереди'],
     [`≈ ${fmt(minutes * 70 / 1e9, 1)} млрд`, 'ударов сердца уже позади'],
     [`≈ ${fmt(minutes * 15 / 1e6)} млн`, 'вдохов уже сделано'],
   ] : [
     [fmt(livedWeeks), 'недель прожито'],
-    ['за горизонтом', 'каждая новая неделя — сверх листа. Подарок.'],
+    ['за горизонтом', 'прожито больше, чем помещается на этом листе'],
     [`≈ ${fmt(minutes * 70 / 1e9, 1)} млрд`, 'ударов сердца уже позади'],
   ];
   if (factsEl) factsEl.innerHTML = facts.map(([n, t]) => `<li><strong>${n}</strong>${t}</li>`).join('');
@@ -739,8 +776,7 @@ if (birthIn) {
   birthIn.addEventListener('input', onInput);
   lifeIn.addEventListener('input', onInput);
   $('#weeksForm').addEventListener('submit', e => e.preventDefault());
-  let rt;
-  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(drawWeeks, 200); });
+  onWidthResize(drawWeeks);
 }
 
 /* ─────────────────────────────────────────────
@@ -785,40 +821,47 @@ const obs = new IntersectionObserver(entries => {
     }
   });
 }, { threshold: 0.06, rootMargin: '0px 0px -12% 0px' });
+/* endless decorative animations (flames, smoke, glowing eyes) run only on screen */
+const visObs = new IntersectionObserver(entries => entries.forEach(e => e.target.classList.toggle('vis', e.isIntersecting)), { rootMargin: '50px' });
 
 const dripFill = $('#dripFill'), dripBead = $('#dripBead');
 const bgNums = $$('.ch-bg-num');
+const parallax = !noMotion && !isMobile;
 let ticking = false;
 function onScroll() {
   if (ticking) return;
   ticking = true;
   requestAnimationFrame(() => {
     ticking = false;
+    // all reads first, then all writes — no forced layouts in between
     const max = document.documentElement.scrollHeight - innerHeight;
     const p = clamp(max > 0 ? scrollY / max : 0, 0, 1);
-    if (dripFill) dripFill.style.height = (p * 100) + '%';
-    if (dripBead) dripBead.style.top = (p * 100) + '%';
-    updateHourglass(p);
-    // the section crossing the middle of the screen is the current one
     const mid = innerHeight * 0.45;
     let idx = -1;
+    // the section crossing the middle of the screen is the current one
     navSections.forEach((s, i) => { const b = s.getBoundingClientRect(); if (b.top <= mid && b.bottom > mid) idx = i; });
     if (idx < 0 && scrollY < innerHeight) idx = 0;
-    setActive(idx);
-    if (!noMotion) bgNums.forEach(num => {
+    const shifts = parallax ? bgNums.map(num => {
       const b = num.parentElement.getBoundingClientRect();
-      if (b.bottom < 0 || b.top > innerHeight) return;
-      const offset = (b.top + b.height / 2 - innerHeight / 2) * 0.12;
-      num.style.transform = `translate(-50%, calc(-50% + ${offset.toFixed(1)}px))`;
-    });
+      return b.bottom < 0 || b.top > innerHeight ? null : (b.top + b.height / 2 - innerHeight / 2) * 0.12;
+    }) : [];
+    if (dripFill) dripFill.style.transform = `scaleY(${p.toFixed(4)})`;
+    if (dripBead) dripBead.style.transform = `translateY(${(p * innerHeight - 6).toFixed(1)}px)`;
+    updateHourglass(p);
+    setActive(idx);
+    shifts.forEach((o, i) => { if (o !== null) bgNums[i].style.transform = `translate(-50%, calc(-50% + ${o.toFixed(1)}px))`; });
   });
 }
 window.addEventListener('scroll', onScroll, { passive: true });
-window.addEventListener('resize', onScroll, { passive: true });
+onWidthResize(onScroll, 50);
 
 /* hero spinner */
 const spinEl = $('#spin');
-if (spinEl && !noMotion) { let si = 0; setInterval(() => { spinEl.textContent = '|/-\\'[si++ % 4]; }, 130); }
+if (spinEl && !noMotion) {
+  let si = 0, on = true;
+  whenVisible(spinEl, v => { on = v; });
+  setInterval(() => { if (on) spinEl.textContent = '|/-\\'[si++ % 4]; }, 130);
+}
 
 /* back to top */
 ['again', 'again2'].forEach(id => $('#' + id)?.addEventListener('click', () => window.scrollTo({ top: 0, behavior: noMotion ? 'auto' : 'smooth' })));
@@ -831,12 +874,12 @@ const NOTES = {
   III: '2 из 4 —\nне у всех!',
   IV: 'почти\nкаждый пятый',
   V: '17 дней —\nдольше всех',
-  VI: 'вздутие —\nэто газы бактерий',
+  VI: 'вздутие —\nот газов бактерий',
   VII: 'говори\nс ними',
   VIII: 'старше\nСолнца',
   IX: '≈ 2 в секунду',
   X: 'Байок:\n«4 фразы»',
-  XI: 'закрашивай\nне зря',
+  XI: 'красная —\nэта неделя',
 };
 const STAMPS = { II: 'зафиксировано', IV: 'не доказано', VI: 'необратимо', VIII: 'aeternum', IX: 'ВОЗ · 2019', XI: 'memento mori' };
 const APPX_STAMPS = { A: 'проверено', C: 'архив', E: 'важно', F: 'лично' };
@@ -855,11 +898,11 @@ function initAll() {
   drawScrawls();
   let st;
   const redraw = () => { clearTimeout(st); st = setTimeout(drawScrawls, 300); };
-  window.addEventListener('resize', redraw);
+  onWidthResize(redraw, 0);
   if (document.fonts && document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', redraw);
   measureStrokes();
   drawWeeks();
-  allSections.forEach(s => obs.observe(s));
+  allSections.forEach(s => { obs.observe(s); visObs.observe(s); });
   if (!noMotion) requestAnimationFrame(drawFog);
   $('.chapter.hero')?.classList.add('in');
   onScroll();

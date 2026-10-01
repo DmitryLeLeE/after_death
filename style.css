@@ -77,8 +77,8 @@ body.cursor-hover #cursor::before { transform: scale(1.8); }
 
 /* ── GRAIN ── */
 #grain {
-  position: fixed; inset: -200%; z-index: 16;
-  width: 400%; height: 400%;
+  position: fixed; inset: -10%; z-index: 16;
+  width: 120%; height: 120%;
   pointer-events: none; opacity: .06;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   animation: grain .5s steps(2) infinite;
@@ -167,17 +167,17 @@ body.cursor-hover #cursor::before { transform: scale(1.8); }
 .drip { position: fixed; left: 18px; top: 0; bottom: 0; width: 2px; z-index: 50; pointer-events: none; }
 .drip-track { position: absolute; inset: 0; background: var(--faint); width: 1px; }
 .drip-fill {
-  position: absolute; left: 0; top: 0; width: 2px;
+  position: absolute; left: 0; top: 0; width: 2px; height: 100%;
   background: linear-gradient(#4a0c0c, var(--blood2));
   box-shadow: 0 0 6px rgba(181,42,34,.6);
-  height: 0;
+  transform: scaleY(0); transform-origin: top;
 }
 .drip-bead {
   position: absolute; left: -4px; width: 10px; height: 13px;
   background: radial-gradient(circle at 35% 35%, #d8584c, var(--blood) 60%, #4a0c0c);
   border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
   box-shadow: 0 0 10px rgba(181,42,34,.7);
-  transform: translateY(-6px);
+  top: 0; transform: translateY(-6px);
 }
 
 /* ── RAIL ── */
@@ -234,7 +234,7 @@ body.has-cursor .rail-btn { cursor: none; }
   color: transparent;
   -webkit-text-stroke: 1px rgba(200,134,47,.07);
   top: 50%; left: 50%; transform: translate(-50%, -50%);
-  white-space: nowrap; will-change: transform;
+  white-space: nowrap;
 }
 .ch-inner { position: relative; z-index: 2; width: min(720px, 100%); }
 .ch-inner.wide { width: min(860px, 100%); }
@@ -270,7 +270,13 @@ body.has-cursor .rail-btn { cursor: none; }
 .sheet {
   position: relative;
   transform: translateX(var(--dx, 0)) rotate(var(--rot, 0deg));
-  filter: drop-shadow(0 22px 26px rgba(0,0,0,.75)) drop-shadow(0 2px 3px rgba(0,0,0,.6));
+}
+/* the shadow lives on its own box: a filter on the sheet would be recomputed
+   every time anything inside it repaints (counters, pen strokes, stamps) */
+.sheet::before {
+  content: ""; position: absolute; z-index: -1; pointer-events: none;
+  inset: 14px 6px -6px;
+  box-shadow: 0 22px 40px rgba(0,0,0,.8), 0 4px 10px rgba(0,0,0,.6);
 }
 .paper, .card {
   position: relative;
@@ -302,7 +308,6 @@ body.has-cursor .rail-btn { cursor: none; }
   position: absolute; z-index: 4; height: 28px; display: block;
   background: linear-gradient(180deg, rgba(225,214,180,.62), rgba(196,182,140,.55));
   box-shadow: 0 1px 2px rgba(0,0,0,.25);
-  backdrop-filter: blur(.5px);
 }
 .stamp {
   position: absolute; z-index: 3; pointer-events: none;
@@ -747,12 +752,21 @@ body.has-cursor .again { cursor: none; }
   .timeline time { font-size: .9rem; }
   .ink text { font-size: 19px; }
   /* wide charts keep a readable size and scroll sideways inside the sheet */
-  .chart.scrolls { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 6px; }
+  .chart.scrolls .chart-scroll { overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 6px; }
   .chart.scrolls .ink { min-width: 560px; }
-  .chart.scrolls figcaption { position: sticky; left: 0; }
   .chart.scrolls figcaption::after { content: "← листай график →"; display: block; font: 400 10px/1.4 var(--f-mono); color: var(--red-ink); margin-top: 2px; }
   .drop { font-size: 3.4rem; }
   .myth > b { padding-right: 70px; }
+}
+/* endless animations pause while their section is off screen */
+.ink .c-flame, .ink .c-smoke path, .appx-skull .ember-eye, .hourglass .stream, .hero-title .bl { animation-play-state: paused; }
+.vis .ink .c-flame, .vis .ink .c-smoke path, .vis .appx-skull .ember-eye, .vis .hourglass .stream, .vis .hero-title .bl { animation-play-state: running; }
+
+@media (max-width: 700px), (pointer: coarse) {
+  /* phones: keep the look, drop the most expensive per-frame effects */
+  #grain { animation: none; }
+  .ink .roughen { filter: none; }
+  .hero-title .bl { animation: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

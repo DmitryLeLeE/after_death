@@ -286,7 +286,9 @@
     (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => requestAnimationFrame(drawMarks));
     let rt;
     const later = () => { clearTimeout(rt); rt = setTimeout(drawMarks, 300); };
-    window.addEventListener('resize', later);
+    // ignore height-only resizes (mobile address bar)
+    let lastW = innerWidth;
+    window.addEventListener('resize', () => { if (innerWidth !== lastW) { lastW = innerWidth; later(); } }, { passive: true });
     // a late web font changes every word's box — redraw the marks around them
     if (document.fonts && document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', later);
   }
