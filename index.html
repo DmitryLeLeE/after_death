@@ -3,256 +3,269 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>MORS — atlas mortis</title>
+  <title>MORS — атлас смерти</title>
+  <meta name="description" content="MORS — рукописный атлас о том, что происходит в момент смерти и после: мозг, тело, распад, атомы, статистика, ритуалы и горе. С источниками."/>
+  <meta name="theme-color" content="#0a0807"/>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a0807'/%3E%3Cpath d='M16 4v24M9 11h14' stroke='%23a3201c' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=PT+Mono&family=Caveat:wght@700&family=Playfair+Display:ital,wght@0,900;1,400&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Cormorant+Garamond:ital,wght@0,500;0,700;1,500;1,700&family=Marck+Script&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&family=PT+Mono&family=UnifrakturMaguntia&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
 
-  <!-- Cursor -->
-  <div id="cursor"></div>
+  <!-- shared ink: hatching patterns + a filter that makes clean vectors look inked by hand -->
+  <svg class="defs" aria-hidden="true" focusable="false" width="0" height="0">
+    <defs>
+      <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(38)">
+        <line x1="0" y1="0" x2="0" y2="6" stroke="#2a1d14" stroke-width="1.6"/>
+      </pattern>
+      <pattern id="hatch-red" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(-42)">
+        <line x1="0" y1="0" x2="0" y2="5" stroke="#8b1a1a" stroke-width="1.8"/>
+      </pattern>
+      <pattern id="cross" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <path d="M0 0V7M0 0H7" stroke="#2a1d14" stroke-width="1.1"/>
+      </pattern>
+      <pattern id="dots" width="5" height="5" patternUnits="userSpaceOnUse">
+        <circle cx="2.5" cy="2.5" r=".9" fill="#2a1d14"/>
+      </pattern>
+      <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6"/>
+      </filter>
+      <filter id="rough-strong" x="-10%" y="-10%" width="120%" height="120%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="3" seed="3" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="4.5"/>
+      </filter>
+      <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="4" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+  </svg>
 
-  <!-- Grain + Vignette -->
+  <div id="cursor" aria-hidden="true"></div>
   <div id="grain" aria-hidden="true"></div>
   <div id="vignette" aria-hidden="true"></div>
-
-  <!-- Canvas fog -->
   <canvas id="scene" aria-hidden="true"></canvas>
 
-  <!-- Loader -->
-  <div id="loader">
-    <pre class="loader-art" id="loaderArt"></pre>
+  <!-- Loader: a candle and a blackletter motto -->
+  <div id="loader" aria-hidden="true">
+    <div class="candle">
+      <span class="flame"></span>
+      <span class="wick"></span>
+      <span class="wax"></span>
+    </div>
+    <p class="loader-motto">Memento mori</p>
     <div class="loader-bar"><div class="loader-bar-fill" id="loaderBarFill"></div></div>
-    <span class="loader-txt" id="loaderTxt">initium · 000%</span>
+    <span class="loader-txt" id="loaderTxt">accendo · 000%</span>
   </div>
 
-  <!-- HUD -->
   <header class="hud">
     <div class="brand">
-      <span class="brand-name">MORS</span>
-      <span class="brand-sub">atlas mortis et transitus · I</span>
+      <span class="brand-name">Mors</span>
+      <span class="brand-sub">atlas mortis et transitus</span>
     </div>
     <div class="ch-tracker" id="chTracker" aria-live="polite">
-      <strong id="chCurrent">01</strong> / <span id="chTotal">10</span>
-      <small id="chTitle">Порог смерти</small>
+      <strong id="chCurrent">01</strong> / <span id="chTotal">19</span>
+      <small id="chTitle">Порог</small>
     </div>
   </header>
 
-  <!-- Drip -->
   <div class="drip" aria-hidden="true">
     <div class="drip-track"></div>
     <div class="drip-fill" id="dripFill"></div>
     <div class="drip-bead" id="dripBead"></div>
   </div>
 
-  <!-- Rail -->
   <nav class="rail" id="rail" aria-label="Главы"></nav>
 
-  <!-- Ticker -->
   <pre class="ticker" id="ticker" aria-hidden="true"></pre>
 
   <main id="story">
 
-    <!-- ═══ I HERO ═══ -->
+    <!-- ═══ I · HERO ═══ -->
     <section class="chapter hero" data-roman="I" data-title="Порог">
       <div class="ch-bg-num" aria-hidden="true">I</div>
-      <div class="ch-inner">
-        <div class="kicker">
-          <span class="kicker-line"></span>
-          tabula prima · mors
-          <span class="kicker-line"></span>
+      <div class="ch-inner hero-grid">
+        <div class="hero-text">
+          <div class="kicker"><span class="kicker-line"></span>tabula prima · mors<span class="kicker-line"></span></div>
+          <h1 class="hero-title"><span class="bl">Mors</span><span class="hero-ru">атлас смерти и&nbsp;перехода</span></h1>
+          <p class="scrawl" id="scrawl1">что там — за последней чертой?</p>
+          <p class="hero-lead">Каждую секунду в твоём теле умирает и заменяется около <em>3,8&nbsp;миллиона клеток</em> — примерно 330&nbsp;миллиардов в сутки. Тело давно умеет умирать — по&nbsp;частям. Но что происходит, когда умираешь <em>весь</em>?</p>
+          <p class="hero-hint">Этот атлас — двенадцать листов о смерти: от последней вспышки мозга до атомов, которые переживут Солнце. Всё, что здесь сказано, — с источниками.</p>
+          <div class="scroll-cue"><span class="spin" id="spin">|</span>&ensp;листай — песок уже сыплется</div>
         </div>
-        <pre class="ascii-hero" id="asciiHero" aria-hidden="true"></pre>
-        <pre class="ascii-small" id="asciiSub" aria-hidden="true"></pre>
-        <p class="scrawl" id="scrawl1">что там — за последней чертой?</p>
-        <p class="hero-lead">В каждой секунде твоей жизни умирает около <em>50&thinsp;000 клеток</em>. Тело давно знает, как умирать — по одной. Но что происходит, когда умираешь <em>весь?</em></p>
-        <div class="scroll-cue"><span class="spin" id="spin">|</span>&ensp;листай вниз</div>
+        <figure class="hourglass-wrap" aria-hidden="true">
+          <svg class="hourglass" id="hourglass" viewBox="0 0 200 300"></svg>
+          <figcaption class="hand-cap">песок = твоя прокрутка</figcaption>
+        </figure>
       </div>
     </section>
 
     <!-- ═══ II ═══ -->
-    <section class="chapter" data-roman="II" data-title="Момент">
+    <section class="chapter right" data-roman="II" data-title="Момент">
       <div class="ch-bg-num" aria-hidden="true">II</div>
       <div class="ch-inner">
-        <div class="ch-rule"></div>
         <span class="ch-tag">tabula II · momentum mortis</span>
-        <h2 class="ch-title">Момент<br>смерти</h2>
+        <h2 class="ch-title">Момент смерти</h2>
         <div class="ch-body">
-          <p>Клиническая смерть — не одно событие, а <b>каскад отказов</b>. Сердце останавливается → кровь перестаёт доставлять кислород → нейроны коры начинают гибнуть.</p>
-          <div class="stats">
-            <div class="stat">
-              <span class="stat-num" data-count="4">0</span>
-              <span class="stat-label">минуты до необратимого<br>повреждения мозга</span>
+          <div class="card">
+            <p class="lede"><span class="drop">К</span>линическая смерть — не мгновение, а <b>каскад отказов</b>. Сердце останавливается, кровь больше не несёт кислород, и первым это замечает мозг: он весит 2% тела, но тратит около 20% кислорода.</p>
+            <figure class="chart scrolls" data-chart="dying">
+              <figcaption>Первый час после остановки сердца <small>шкала логарифмическая: секунды растянуты, минуты сжаты</small></figcaption>
+            </figure>
+            <div class="stats">
+              <div class="stat"><span class="stat-num"><span data-count="20">0</span>&thinsp;с</span><span class="stat-label">до потери сознания<br>без кровотока</span></div>
+              <div class="stat"><span class="stat-num"><span data-count="5">0</span>&thinsp;мин</span><span class="stat-label">до необратимого<br>повреждения нейронов</span></div>
+              <div class="stat"><span class="stat-num"><span data-count="20">0</span>&thinsp;%</span><span class="stat-label">кислорода тела<br>забирает мозг</span></div>
             </div>
-            <div class="stat">
-              <span class="stat-num" data-count="50000">0</span>
-              <span class="stat-label">клеток умирает<br>каждую секунду жизни</span>
-            </div>
-            <div class="stat">
-              <span class="stat-num" data-count="36">0</span>
-              <span class="stat-label">часов живёт кожа<br>после смерти сердца</span>
-            </div>
+            <p class="small">Цифры приблизительны: при холоде (утопление в ледяной воде, гипотермия) мозг выдерживает в разы дольше — отсюда врачебное «никто не мёртв, пока он не тёплый и мёртвый».</p>
           </div>
-          <ul class="chips">
-            <li>[ <b>0–4 мин</b> ] нейроны коры — обратимая потеря сознания</li>
-            <li>[ <b>4–10 мин</b> ] необратимое повреждение гиппокампа</li>
-            <li>[ <b>часы</b> ] кожа, кости, роговица живут дольше всего</li>
-          </ul>
         </div>
       </div>
     </section>
 
     <!-- ═══ III ═══ -->
-    <section class="chapter" data-roman="III" data-title="Мозг">
+    <section class="chapter" data-roman="III" data-title="Вспышка">
       <div class="ch-bg-num" aria-hidden="true">III</div>
       <div class="ch-inner">
-        <div class="ch-rule"></div>
         <span class="ch-tag">tabula III · cerebrum moriens</span>
-        <h2 class="ch-title">Последняя<br>вспышка</h2>
+        <h2 class="ch-title">Последняя вспышка</h2>
         <div class="ch-body">
-          <p>В 2023 году нейробиологи зафиксировали у умирающих мощный всплеск <b>гамма-волн</b> — тот же тип, что при осознанных снах и глубокой медитации.</p>
-          <pre class="diagram">
-  покой            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  медитация        ~~~^^^^^~~^^^^^~~^^^^^~~~~~~~~~~~~
-  осознан. сон     ~~^^^^^^^^^^^^^^^^^^^^^^~~~~~~~~~~
-  ────────────────────────────────────────────────────
-  <span class="m">СМЕРТЬ</span>           ~~<span class="d">^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^!</span></pre>
-          <div class="fact">
-            <span class="fact-tag">Земар и др., PNAS 2023</span>
-            <p>Четыре пациента после остановки сердца показали пик гамма-активности в зонах сознания. Природа феномена не ясна — но он воспроизводим.</p>
+          <div class="card">
+            <p class="lede"><span class="drop">В</span> 2023 году группа Джимо Борджигин опубликовала записи ЭЭГ умирающих пациентов, которых отключали от аппаратов жизнеобеспечения. У двоих из четырёх после остановки дыхания мозг выдал <b>всплеск гамма-волн</b> — ритма, который связывают с осознанным восприятием и памятью.</p>
+            <figure class="chart scrolls" data-chart="eeg">
+              <figcaption>Схема ЭЭГ: что видели исследователи <small>иллюстрация по описанию Xu et al., не реальная запись</small></figcaption>
+            </figure>
+            <div class="fact">
+              <span class="fact-tag">Xu, Borjigin и др. · PNAS 2023</span>
+              <p>Всплеск шёл в «горячей зоне» на стыке височной, теменной и затылочной коры — области, которую считают важной для сознания. У крыс та же группа видела похожий взрыв активности ещё в 2013&nbsp;году.</p>
+            </div>
+            <div class="fact">
+              <span class="fact-tag">Vicente, Zemmar и др. · 2022</span>
+              <p>Случайная запись: у 87-летнего пациента ЭЭГ шла во время смерти. За 30 секунд до и после остановки сердца ритмы были похожи на те, что сопровождают <b>вспоминание</b>. Возможно, «вся жизнь перед глазами» — не только метафора. Но это один человек.</p>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- ═══ IV ═══ -->
-    <section class="chapter" data-roman="IV" data-title="Туннель">
+    <section class="chapter right" data-roman="IV" data-title="Видения">
       <div class="ch-bg-num" aria-hidden="true">IV</div>
       <div class="ch-inner">
-        <div class="ch-rule"></div>
         <span class="ch-tag">tabula IV · experientia mortis</span>
-        <h2 class="ch-title">Что видят<br>люди</h2>
+        <h2 class="ch-title">Что видят люди</h2>
         <div class="ch-body">
-          <p>Около <b>10–20%</b> выживших после клинической смерти сообщают об НДО. Кросс-культурный, воспроизводимый феномен — но объяснён только частично.</p>
-          <pre class="diagram">
-  покой и гармония  <span class="m">████████████████████</span> 74%
-  свет впереди      <span class="m">████████████████</span>     62%
-  ощущение тоннеля  <span class="m">████████████████</span>     60%
-  выход из тела     <span class="m">██████████████</span>       54%
-  обзор прожитой жизни <span class="m">████████</span>       32%
-  встреча умерших   <span class="m">██████</span>              23%</pre>
-          <div class="fact">
-            <span class="fact-tag">гипотеза</span>
-            <p>Гамма-всплеск + выброс эндогенного ДМТ + деполяризация сетчатки → реалистичные галлюцинации. Это не доказывает и не опровергает «жизнь после».</p>
+          <div class="card">
+            <p class="lede"><span class="drop">В</span> голландском исследовании 344 пациентов после остановки сердца <b>18% рассказали</b> об околосмертном опыте (ОСО). Что именно они пережили:</p>
+            <figure class="chart scrolls" data-chart="nde">
+              <figcaption>Элементы ОСО у 62 пациентов <small>van Lommel et al., The Lancet, 2001</small></figcaption>
+            </figure>
+            <div class="fact">
+              <span class="fact-tag">гипотезы</span>
+              <p>Гипоксия сетчатки (сужение поля зрения → «тоннель»), сбой в височно-теменном узле (выход из тела можно вызвать стимуляцией этой зоны), эндорфины, REM-вторжение в бодрствование. Ни одна не объясняет всё — и ни одна не доказывает и не опровергает «жизнь после».</p>
+            </div>
+            <div class="fact">
+              <span class="fact-tag">AWARE · Parnia и др. · 2014</span>
+              <p>Над койками реанимации поставили полки с картинками, видимыми только сверху. Из 2060 остановок сердца 9 человек описали ОСО, 2 — «выход из тела». Один точно описал события около трёх минут реанимации. Но ни одной картинки так никто и не увидел.</p>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- ═══ V ═══ -->
-    <section class="chapter" data-roman="V" data-title="Распад">
+    <section class="chapter" data-roman="V" data-title="Кто последний">
       <div class="ch-bg-num" aria-hidden="true">V</div>
       <div class="ch-inner">
-        <div class="ch-rule"></div>
-        <span class="ch-tag">tabula V · putrefactio corporis</span>
-        <h2 class="ch-title">Тело<br>возвращается</h2>
+        <span class="ch-tag">tabula V · ultima cellula</span>
+        <h2 class="ch-title">Что умирает последним</h2>
         <div class="ch-body">
-          <p>Кишечные бактерии, сдерживаемые иммунитетом всю жизнь, начинают пожирать тело изнутри. Это <b>возвращение атомов</b> в общий круговорот.</p>
-          <pre class="diagram">
-  I   <span class="d">algor mortis</span>   охлаждение ~1°C/ч         <span class="m">0–12 ч</span>
-  II  <span class="d">rigor mortis</span>   окоченение мышц           <span class="m">2–36 ч</span>
-  III <span class="d">livor mortis</span>   трупные пятна             <span class="m">2–12 ч</span>
-  ────────────────────────────────────────────────
-  IV  <span class="d">аутолиз</span>        кислота разрушает клетки  <span class="m">1–3 дня</span>
-  V   <span class="d">путрефакция</span>    бактерии выходят наружу   <span class="m">2–5 дней</span>
-  VI  <span class="d">скелетиров.</span>    возвращение в землю       <span class="m">недели–годы</span></pre>
+          <div class="card">
+            <p class="lede"><span class="drop">С</span>мерть человека и смерть его клеток — разные события. Мозг гибнет за минуты, а <b>некоторые клетки живут неделями</b>: без кислорода они просто засыпают.</p>
+            <figure class="chart scrolls" data-chart="tissues">
+              <figcaption>Сколько живут ткани после остановки кровотока <small>порядок величин; при обычной температуре</small></figcaption>
+            </figure>
+            <div class="fact">
+              <span class="fact-tag">Pozhitkov и др. · Open Biology 2017</span>
+              <p>После смерти мышей и рыбок-данио около тысячи генов <b>включились</b>, а не выключились: гены стресса, воспаления, иммунитета и даже эмбрионального развития. Активность держалась до двух суток у мышей и до четырёх — у рыб.</p>
+            </div>
+            <div class="fact">
+              <span class="fact-tag">OrganEx · Andrijevic и др. · Nature 2022</span>
+              <p>Свиньям через час после остановки сердца подключили систему с кровезаменителем. Сердце снова сокращалось, в органах восстановились клеточные функции. Сознание не возвращалось — но граница «необратимого» сдвинулась.</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- ═══ VI ═══ -->
-    <section class="chapter" data-roman="VI" data-title="Сознание">
+    <section class="chapter right" data-roman="VI" data-title="Распад">
       <div class="ch-bg-num" aria-hidden="true">VI</div>
       <div class="ch-inner">
-        <div class="ch-rule"></div>
-        <span class="ch-tag">tabula VI · conscientia ultima</span>
-        <h2 class="ch-title">Угасание<br>сознания</h2>
+        <span class="ch-tag">tabula VI · putrefactio corporis</span>
+        <h2 class="ch-title">Тело возвращается</h2>
         <div class="ch-body">
-          <p>Сознание не гаснет как кнопка. Оно угасает слоями. <b>Слух работает дольше всего</b> — это меняет то, как мы прощаемся с умирающими.</p>
-          <pre class="diagram">
-  речь и движение   ████  уходят первыми
-  зрение            ████
-  болевая реакция   ████
-  осязание          ███
-  ──────────────────────────────────────────────
-  <span class="m">слух              ██    последним из чувств</span>
-  ЭЭГ-активность    █     уже после слуха
-  ──────────────────────────────────────────────
-  → <span class="d">говори с умирающим. он слышит.</span></pre>
-          <div class="sep">
-            <div class="sep-line"></div>
-            <span class="sep-glyph">✦</span>
-            <div class="sep-line" style="transform-origin:right;background:linear-gradient(90deg,transparent,var(--copper))"></div>
-          </div>
-          <div class="fact">
-            <span class="fact-tag">паллиативная медицина</span>
-            <p>Слуховые пути сохраняют активность даже когда другие системы уже не работают. Разговор с умирающим — не ритуал, это <b>настоящий контакт</b>.</p>
+          <div class="card">
+            <p class="lede"><span class="drop">К</span>ишечные бактерии, которых иммунитет сдерживал всю жизнь, начинают есть тело изнутри. Ферменты клеток растворяют их собственные стенки — <b>аутолиз</b>. Это не ужас, а бухгалтерия: атомы возвращаются в оборот.</p>
+            <figure class="chart scrolls" data-chart="decay">
+              <figcaption>Календарь распада <small>шкала логарифмическая; сроки сильно зависят от температуры, влажности и почвы</small></figcaption>
+            </figure>
+            <ul class="chips">
+              <li><b>algor mortis</b> — тело остывает примерно на 0,8–1&nbsp;°C в час, пока не сравняется со средой</li>
+              <li><b>livor mortis</b> — кровь стекает вниз; пятна появляются через 20–30 минут и «застывают» к 8–12 часам</li>
+              <li><b>rigor mortis</b> — без АТФ мышцы сцепляются; окоченение начинается с век и челюсти, проходит за 1–3 суток</li>
+            </ul>
+            <div class="fact">
+              <span class="fact-tag">«ферма тел» AFTER · Австралия 2019</span>
+              <p>Элис Уилсон 17 месяцев снимала тело донора каждые 30 минут. Руки, лежавшие вдоль тела, <b>сползли в стороны</b>: связки высыхают и тянут конечности. Мёртвые действительно двигаются — криминалистам пришлось это учитывать.</p>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- ═══ VII ═══ -->
-    <section class="chapter" data-roman="VII" data-title="Атомы">
+    <section class="chapter" data-roman="VII" data-title="Слух">
       <div class="ch-bg-num" aria-hidden="true">VII</div>
       <div class="ch-inner">
-        <div class="ch-rule"></div>
-        <span class="ch-tag">tabula VII · atomorum cursus</span>
-        <h2 class="ch-title">Атомы<br>бессмертны</h2>
+        <span class="ch-tag">tabula VII · conscientia ultima</span>
+        <h2 class="ch-title">Свечи гаснут по одной</h2>
         <div class="ch-body">
-          <p>Атомы твоего тела существуют <b>миллиарды лет</b>. После смерти они станут почвой, растениями, другими существами.</p>
-          <div class="genome" id="atomStream">C H O N P S · C H O N P S · звезда → земля → жизнь</div>
-          <div class="stats">
-            <div class="stat">
-              <span class="stat-num" style="font-size:2rem">13.8</span>
-              <span class="stat-label">млрд лет — возраст<br>атомов водорода в крови</span>
+          <div class="card">
+            <p class="lede"><span class="drop">С</span>ознание не выключается кнопкой. В хосписах давно замечают порядок, в котором уходят чувства и желания. И <b>слух, похоже, уходит последним</b>.</p>
+            <figure class="chart" data-chart="candles">
+              <figcaption>Порядок угасания у умирающих <small>наблюдения паллиативной медицины; у каждого по-своему</small></figcaption>
+            </figure>
+            <div class="fact">
+              <span class="fact-tag">Blundon и др. · Scientific Reports 2020</span>
+              <p>В хосписе Ванкувера пациентам в последние часы жизни, уже не отвечавшим на голос, включали серии звуков и писали ЭЭГ. Мозг некоторых реагировал на необычные тоны так же, как у здоровых молодых людей.</p>
             </div>
-            <div class="stat">
-              <span class="stat-num">1</span>
-              <span class="stat-label">год — и твой углерод<br>окажется в листьях деревьев</span>
-            </div>
+            <p class="whisper">→ говори с умирающим. он, вероятно, слышит.</p>
           </div>
         </div>
       </div>
     </section>
 
     <!-- ═══ VIII ═══ -->
-    <section class="chapter" data-roman="VIII" data-title="Наука">
+    <section class="chapter right" data-roman="VIII" data-title="Атомы">
       <div class="ch-bg-num" aria-hidden="true">VIII</div>
       <div class="ch-inner">
-        <div class="ch-rule"></div>
-        <span class="ch-tag">tabula VIII · scientia mortis</span>
-        <h2 class="ch-title">Граница<br>знания</h2>
+        <span class="ch-tag">tabula VIII · atomorum cursus</span>
+        <h2 class="ch-title">Атомы бессмертны</h2>
         <div class="ch-body">
-          <p>Наука хорошо описывает биологию смерти. Но <b>«жёсткая проблема сознания»</b> — почему вообще есть субъективный опыт — не решена нигде и никем.</p>
-          <div class="two-col">
-            <div class="col-block dark">
-              <span class="col-head">знаем</span>
-              механизм клеточной гибели<br>
-              роль мозга в сознании<br>
-              НДО как феномен<br>
-              нейрокорреляты<br>
-              биохимия распада
-            </div>
-            <div class="col-block">
-              <span class="col-head">не знаем</span>
-              природа сознания<br>
-              есть ли «я» после<br>
-              субъективность НДО<br>
-              что было до рождения<br>
-              смысл смерти
+          <div class="card">
+            <p class="lede"><span class="drop">В</span> теле человека весом 70&nbsp;кг около <b>7 октиллионов атомов</b> — семёрка и 27 нулей. Ни один из них не родился вместе с тобой и ни один не умрёт вместе с тобой.</p>
+            <figure class="chart" data-chart="atoms">
+              <figcaption>Из чего ты сделан <small>одно тело, два способа посчитать</small></figcaption>
+            </figure>
+            <div class="genome" id="atomStream">H O C N Ca P · Большой взрыв → звезда → сверхновая → земля → ты → земля</div>
+            <div class="stats">
+              <div class="stat"><span class="stat-num"><span data-count="13.8">0</span></span><span class="stat-label">млрд лет — возраст<br>водорода в твоей воде</span></div>
+              <div class="stat"><span class="stat-num">&gt;<span data-count="4.6">0</span></span><span class="stat-label">млрд лет — углерод и кислород:<br>старше Солнца, из чужих звёзд</span></div>
+              <div class="stat"><span class="stat-num"><span data-count="62">0</span>&thinsp;%</span><span class="stat-label">твоих атомов —<br>водород</span></div>
             </div>
           </div>
         </div>
@@ -260,178 +273,233 @@
     </section>
 
     <!-- ═══ IX ═══ -->
-    <section class="chapter" data-roman="IX" data-title="Хорошая смерть">
+    <section class="chapter" data-roman="IX" data-title="Арифметика">
       <div class="ch-bg-num" aria-hidden="true">IX</div>
-      <div class="ch-inner">
-        <div class="ch-rule"></div>
-        <span class="ch-tag">tabula IX · mors bona</span>
-        <h2 class="ch-title">Хорошая<br>смерть</h2>
+      <div class="ch-inner wide">
+        <span class="ch-tag">tabula IX · arithmetica mortis</span>
+        <h2 class="ch-title">Арифметика смерти</h2>
         <div class="ch-body">
-          <p>Паллиативная медицина собрала тысячи интервью. Большинство на пороге говорят не о страхе — а о <b>незавершённых отношениях</b>.</p>
-          <ol class="shields">
-            <li>
-              <span class="shield-num">01</span>
-              <strong class="shield-title">Без боли</strong>
-              <p>Паллиативная седация возможна. Это право, не привилегия.</p>
-            </li>
-            <li>
-              <span class="shield-num">02</span>
-              <strong class="shield-title">Не одному</strong>
-              <p>Присутствие близкого измеримо снижает тревогу умирающего.</p>
-            </li>
-            <li>
-              <span class="shield-num">03</span>
-              <strong class="shield-title">Успеть сказать</strong>
-              <p>«Прости», «я прощаю», «спасибо», «люблю» — четыре фразы.</p>
-            </li>
-            <li>
-              <span class="shield-num">04</span>
-              <strong class="shield-title">Контроль</strong>
-              <p>Право знать прогноз, выбирать место, отказываться от процедур.</p>
-            </li>
-            <li>
-              <span class="shield-num">05</span>
-              <strong class="shield-title">Смысл</strong>
-              <p>Нашедшие смысл в прожитом умирают спокойнее — воспроизводимый результат.</p>
-            </li>
-          </ol>
+          <div class="card">
+            <p class="lede"><span class="drop">В</span> мире умирает около <b>62 миллионов человек</b> в год — примерно двое в секунду. Рождается вдвое больше.</p>
+            <div class="live" aria-live="off">
+              <div class="live-cell"><span class="live-label">пока открыт этот атлас, умерло</span><span class="live-num" id="liveDeaths">0</span><span class="live-unit">человек</span></div>
+              <div class="live-sep" aria-hidden="true">✝</div>
+              <div class="live-cell"><span class="live-label">и родилось</span><span class="live-num born" id="liveBirths">0</span><span class="live-unit">человек</span></div>
+            </div>
+            <figure class="chart scrolls" data-chart="causes">
+              <figcaption>Главные причины смерти в мире, млн в год <small>WHO Global Health Estimates, 2019 — последний год до пандемии</small></figcaption>
+            </figure>
+            <div class="two-charts">
+              <figure class="chart" data-chart="ever">
+                <figcaption>Все люди, когда-либо рождённые <small>≈ 117 млрд · PRB, 2022</small></figcaption>
+              </figure>
+              <figure class="chart" data-chart="life">
+                <figcaption>Ожидаемая продолжительность жизни в мире <small>Our World in Data / ООН</small></figcaption>
+              </figure>
+            </div>
+            <p class="small">Ожидаемая продолжительность жизни в 1800-х была около 30 лет не потому, что все умирали в тридцать: почти половина детей не доживала до пяти. Доживший до 20 обычно жил до 50–60.</p>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- ═══ X FINALE ═══ -->
-    <section class="chapter hero finale" data-roman="X" data-title="После">
+    <!-- ═══ X ═══ -->
+    <section class="chapter right" data-roman="X" data-title="Хорошая смерть">
       <div class="ch-bg-num" aria-hidden="true">X</div>
       <div class="ch-inner">
-        <div class="kicker">
-          <span class="kicker-line"></span>
-          tabula ultima · finis et initium
-          <span class="kicker-line"></span>
+        <span class="ch-tag">tabula X · ars moriendi</span>
+        <h2 class="ch-title">Хорошая смерть</h2>
+        <div class="ch-body">
+          <div class="card">
+            <p class="lede"><span class="drop">В</span> XV веке по Европе ходили книжки <i>Ars moriendi</i> — «искусство умирать». Сегодня этим занимается паллиативная медицина, и большинство на пороге говорят не о страхе, а о <b>незавершённых отношениях</b>.</p>
+            <ol class="shields">
+              <li><span class="shield-num">I</span><strong class="shield-title">Без боли</strong><p>Почти любую боль в конце жизни можно облегчить. Это право, а не привилегия.</p></li>
+              <li><span class="shield-num">II</span><strong class="shield-title">Не в одиночестве</strong><p>Присутствие близкого снижает тревогу умирающего — и облегчает горе тех, кто остаётся.</p></li>
+              <li><span class="shield-num">III</span><strong class="shield-title">Успеть сказать</strong><p>«Прости меня», «я прощаю тебя», «спасибо», «я люблю тебя» — четыре фразы врача Айры Байока.</p></li>
+              <li><span class="shield-num">IV</span><strong class="shield-title">Решать самому</strong><p>Знать прогноз, выбирать место, отказываться от процедур, которые продлевают умирание, а не жизнь.</p></li>
+            </ol>
+            <div class="regrets">
+              <span class="col-head">пять сожалений умирающих · записала медсестра хосписа Бронни Уэр</span>
+              <ol>
+                <li>Жаль, что я жил не своей жизнью, а той, что от меня ждали.</li>
+                <li>Жаль, что я столько работал.</li>
+                <li>Жаль, что я не решался говорить о своих чувствах.</li>
+                <li>Жаль, что я не поддерживал связь с друзьями.</li>
+                <li>Жаль, что я не позволил себе быть счастливее.</li>
+              </ol>
+              <p class="small">Это наблюдения одного человека, а не исследование, — но их узнают почти все.</p>
+            </div>
+          </div>
         </div>
+      </div>
+    </section>
+
+    <!-- ═══ XI ═══ -->
+    <section class="chapter" data-roman="XI" data-title="Memento mori">
+      <div class="ch-bg-num" aria-hidden="true">XI</div>
+      <div class="ch-inner wide">
+        <span class="ch-tag">tabula XI · memento mori</span>
+        <h2 class="ch-title">Твои недели</h2>
+        <div class="ch-body">
+          <div class="card">
+            <p class="lede"><span class="drop">Ж</span>изнь длиной 80 лет — это всего около <b>4170 недель</b>. Они помещаются на один лист. Каждая клетка ниже — неделя; строка — год.</p>
+            <form class="weeks-form" id="weeksForm" autocomplete="off">
+              <label>год рождения <input type="number" id="birthYear" min="1900" max="2026" step="1" value="1995" inputmode="numeric"/></label>
+              <label>горизонт, лет <input type="number" id="lifeYears" min="30" max="110" step="1" value="80" inputmode="numeric"/></label>
+            </form>
+            <div class="weeks-wrap"><canvas id="weeks" aria-label="Сетка недель жизни" role="img"></canvas></div>
+            <ul class="weeks-facts" id="weeksFacts"></ul>
+            <p class="small">Это не прогноз, а упражнение стоиков: Сенека писал, что «мы умираем каждый день». Цель — не испугаться, а заметить, что неделя, которая идёт сейчас, ещё не закрашена.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ XII · FINALE ═══ -->
+    <section class="chapter hero finale" data-roman="XII" data-title="После">
+      <div class="ch-bg-num" aria-hidden="true">XII</div>
+      <div class="ch-inner">
+        <div class="kicker"><span class="kicker-line"></span>tabula ultima · finis et initium<span class="kicker-line"></span></div>
         <h2 class="ch-title">После</h2>
         <p class="scrawl" id="scrawl3">смерть — часть жизни. всегда была.</p>
-        <p class="hero-lead"><b>Ты сделан из звёздной пыли</b> и вернёшься в неё. Сознание, читающее эти слова — редкое, временное чудо Вселенной. Смерть не уничтожает атомы. Она меняет им адрес.</p>
-        <p class="small" style="margin-top:20px">Атлас — научно-популярная визуализация. При тяжёлой утрате обратись к психологу.</p>
-        <button class="again" id="again">[ ↑ вернуться к началу ]</button>
+        <p class="hero-lead"><b>Ты сделан из звёздной пыли</b> и вернёшься в неё. Сознание, читающее эти слова, — редкое и временное чудо Вселенной. Смерть не уничтожает атомы. Она меняет им адрес.</p>
+        <p class="epitaph">Quod tu es, ego fui; quod ego sum, tu eris.<small>«Чем ты являешься, тем был и я; чем я являюсь, тем станешь и ты» — надпись на средневековых надгробиях</small></p>
+        <p class="small">Атлас — научно-популярная визуализация, не медицинская консультация. Если тебе тяжело после утраты — не оставайся с этим один: поговори с близкими, психологом или позвони на линию психологической помощи.</p>
+        <button class="again" id="again" type="button">[ ↑ вернуться к началу ]</button>
       </div>
     </section>
 
     <!-- ═══ APPENDICES ═══ -->
     <div class="appx-intro" id="appendix">
-      <pre class="appx-virion" id="appxVirion" aria-hidden="true"></pre>
-      <div class="kicker">
-        <span class="kicker-line"></span>
-        appendices · приложения
-        <span class="kicker-line"></span>
-      </div>
+      <svg class="appx-skull" id="appxSkull" viewBox="0 0 160 170" aria-hidden="true"></svg>
+      <div class="kicker"><span class="kicker-line"></span>appendices · приложения<span class="kicker-line"></span></div>
       <p class="scrawl" id="scrawl2">дальше — детали. читай.</p>
-      <h2 class="appx-h">Всё остальное<br>о смерти</h2>
-      <p style="color:var(--text);max-width:580px;font-size:1rem;line-height:1.8">Страх, история, ритуалы, горе, подготовка, философия.</p>
+      <h2 class="appx-h">Всё остальное о&nbsp;смерти</h2>
+      <p class="appx-lead">Мифы, страх, история, ритуалы, горе, подготовка, философия.</p>
     </div>
 
-    <section class="appx" data-roman="A" data-title="Страх">
-      <span class="num">appendix A · timor mortis</span>
-      <h2>Страх смерти: <em>танатофобия</em></h2>
-      <p>Парадокс: <b>пожилые боятся смерти меньше молодых</b>. И те, кто думал о смерти — меньше избегавших этих мыслей.</p>
-      <div class="grid3">
-        <div><b>Танатофобия</b><p>Патологический страх мешает жить. Лечится КПТ и экспозиционной терапией.</p></div>
-        <div><b>Terror Management</b><p>Осознание смертности → тревога → цепляние за нарративы бессмертия. Хорошо подтверждена.</p></div>
-        <div><b>Memento mori</b><p>Стоики, буддисты, монахи — все практиковали осознание смертности для освобождения от страха.</p></div>
+    <section class="appx" data-roman="A" data-title="Мифы">
+      <span class="num">appendix A · fabulae et veritas</span>
+      <h2>Мифы и факты: <em>что правда</em></h2>
+      <p>Вокруг смерти много красивых историй. Некоторые оказались <b>правдой</b>.</p>
+      <div class="myths">
+        <div class="myth"><span class="verdict no">миф</span><b>Волосы и ногти растут после смерти</b><p>Кожа высыхает и стягивается, обнажая то, что было под ней. Для роста нужна глюкоза и деление клеток — их нет.</p></div>
+        <div class="myth"><span class="verdict no">миф</span><b>Душа весит 21 грамм</b><p>Врач Дункан Макдугалл в 1907 году взвесил шестерых умирающих. Результаты разнились, часть он отбросил. Опыт ни разу не воспроизведён.</p></div>
+        <div class="myth"><span class="verdict yes">правда</span><b>Мёртвые тела двигаются</b><p>Высыхающие связки тянут конечности; Лазарев рефлекс — движение рук при смерти мозга — идёт из спинного мозга.</p></div>
+        <div class="myth"><span class="verdict yes">правда</span><b>Людей хоронили заживо</b><p>Редко, но бывало. В XVIII–XIX веках патентовали «гробы безопасности» с колокольчиками и трубками для воздуха.</p></div>
+        <div class="myth"><span class="verdict maybe">похоже</span><b>Слух уходит последним</b><p>ЭЭГ умирающих в хосписе подтверждает реакцию на звук (Blundon, 2020). Слышат ли они осознанно — неизвестно.</p></div>
+        <div class="myth"><span class="verdict no">миф</span><b>Предсмертный хрип — это мучение</b><p>Звук даёт слюна в горле, когда человек уже не сглатывает. Обычно он без сознания и хрипа не ощущает.</p></div>
       </div>
     </section>
 
-    <section class="appx" data-roman="B" data-title="Определения">
-      <span class="num">appendix B · historia definitionis</span>
+    <section class="appx" data-roman="B" data-title="Страх">
+      <span class="num">appendix B · timor mortis</span>
+      <h2>Страх смерти: <em>танатофобия</em></h2>
+      <p>Парадокс: <b>пожилые боятся смерти меньше</b> молодых. А те, кто о смерти думает, — меньше тех, кто эти мысли гонит.</p>
+      <div class="grid3">
+        <div><b>Танатофобия</b><p>Когда страх мешает жить, это лечится — когнитивно-поведенческой и экспозиционной терапией.</p></div>
+        <div><b>Теория управления страхом</b><p>Напоминание о смертности заставляет держаться за свои ценности и группу. Подтверждена в сотнях экспериментов.</p></div>
+        <div><b>Memento mori</b><p>Стоики, буддийские монахи, трапписты практиковали память о смерти — чтобы освободиться от страха, а не утонуть в нём.</p></div>
+      </div>
+    </section>
+
+    <section class="appx" data-roman="C" data-title="Определения">
+      <span class="num">appendix C · historia definitionis</span>
       <h2>Что считать смертью: <em>история вопроса</em></h2>
       <ol class="timeline">
-        <li style="--i:0"><time>до XIX</time><p>Смерть = остановка сердца. Людей хоронили живыми — отсюда «спасительный гроб» с колокольчиком.</p></li>
-        <li style="--i:1"><time>1968</time><p>Гарвардский комитет вводит критерий <b>смерти мозга</b> — открывает эру трансплантологии.</p></li>
-        <li style="--i:2" class="hi"><time>1990-е</time><p>Паллиативное движение: смерть как медицинское событие, которым можно управлять.</p></li>
-        <li style="--i:3"><time>2013</time><p>AWARE study: пациент описал события реанимации точно — пока был «мёртв».</p></li>
-        <li style="--i:4" class="hi"><time>2022</time><p>OrganEx: свиней оживили через час после смерти. Граница необратимости размывается.</p></li>
-        <li style="--i:5" class="hi"><time>2023</time><p>Гамма-всплеск в умирающем мозге. Смерть снова оказалась сложнее.</p></li>
+        <li style="--i:0"><time>XVIII–XIX</time><p>Смерть = остановка сердца и дыхания. Страх погребения заживо: «гробы безопасности», «дома ожидания», где тела лежали до первых признаков разложения.</p></li>
+        <li style="--i:1"><time>1816</time><p>Лаэннек изобретает стетоскоп — впервые можно уверенно услышать, что сердце остановилось.</p></li>
+        <li style="--i:2" class="hi"><time>1968</time><p>Гарвардский комитет вводит критерий <b>смерти мозга</b> — и открывает эру трансплантологии.</p></li>
+        <li style="--i:3"><time>2001</time><p>van Lommel в <i>The Lancet</i>: околосмертный опыт — у 18% реанимированных.</p></li>
+        <li style="--i:4"><time>2014</time><p>AWARE: пациент описал события реанимации, пока сердце не билось.</p></li>
+        <li style="--i:5" class="hi"><time>2019–22</time><p>BrainEx и OrganEx: клеточные функции мозга и органов свиней восстановлены через часы после смерти.</p></li>
+        <li style="--i:6" class="hi"><time>2023</time><p>Гамма-всплеск в умирающем человеческом мозге. Граница снова оказалась размытой.</p></li>
       </ol>
     </section>
 
-    <section class="appx" data-roman="C" data-title="Ритуалы">
-      <span class="num">appendix C · ritus funebres</span>
-      <h2>Ритуалы: <em>зачем они нужны</em></h2>
-      <p>Похоронный ритуал — <b>не суеверие</b>, а психологический инструмент. Он буквально ускоряет нейронную реорганизацию после утраты.</p>
-      <div class="two-col">
-        <div class="col-block dark">
-          <span class="col-head">зачем ритуал</span>
-          фиксирует факт смерти (мозг верит)<br>
-          собирает общину<br>
-          даёт структуру горю<br>
-          чтит прожитое
-        </div>
-        <div class="col-block">
-          <span class="col-head">форматы в мире</span>
-          огонь (кремация)<br>
-          земля (погребение)<br>
-          вода (реки, море)<br>
-          воздух (Тибет, небесные)<br>
-          компост (США, 2023)
-        </div>
+    <section class="appx" data-roman="D" data-title="Ритуалы">
+      <span class="num">appendix D · ritus funebres</span>
+      <h2>Ритуалы: <em>как прощаются люди</em></h2>
+      <p>Похоронный ритуал — <b>не суеверие</b>, а психологический инструмент: он делает смерть реальной, собирает общину и даёт горю форму.</p>
+      <div class="rites">
+        <div><b>Тибет · небесное погребение</b><p>Тело оставляют на горе грифам. Земля мёрзлая, дров нет — и последний дар живым существам.</p></div>
+        <div><b>Тораджа · Индонезия</b><p>Умершего месяцами и годами держат дома как «больного». Раз в несколько лет на ма’нене тела достают, чистят и переодевают.</p></div>
+        <div><b>Мадагаскар · фамадихана</b><p>«Переворачивание костей»: останки достают из склепа, заворачивают в новые саваны и танцуют с ними.</p></div>
+        <div><b>Япония · котсуагэ</b><p>Кремируют почти 100% умерших. Родные палочками перекладывают кости в урну — поэтому за едой нельзя передавать палочками друг другу.</p></div>
+        <div><b>Гана · фантазийные гробы</b><p>Гроб в форме рыбы, самолёта или перца чили — по профессии и мечтам умершего.</p></div>
+        <div><b>Мексика · Día de Muertos</b><p>1–2 ноября мёртвые возвращаются в гости: алтари, бархатцы, сахарные черепа.</p></div>
+        <div><b>Викторианская Англия</b><p>Траур по правилам: годы чёрного, украшения из волос умершего, посмертные фотографии.</p></div>
+        <div><b>США · компостирование</b><p>С 2020 года в штате Вашингтон тело можно законно превратить в почву за 30–45 дней.</p></div>
       </div>
     </section>
 
-    <section class="appx" data-roman="D" data-title="Горе">
-      <span class="num">appendix D · luctus</span>
+    <section class="appx" data-roman="E" data-title="Горе">
+      <span class="num">appendix E · luctus</span>
       <h2>Горе: <em>не стадии, а волны</em></h2>
-      <p>Модель Кюблер-Росс — <b>метафора, не наука</b>. Настоящее горе нелинейно: любой порядок «стадий», возвраты — это норма.</p>
+      <p>«Пять стадий» Кюблер-Росс описывали умирающих, а не скорбящих, и это <b>метафора, а не закон</b>. Настоящее горе нелинейно: возвраты и любой порядок — норма.</p>
       <div class="grid3">
-        <div><b>Острое горе</b><p>Шок, оцепенение. Тело буквально болит — активируются болевые центры мозга.</p></div>
-        <div><b>Интеграция</b><p>Образ умершего встраивается во внутренний мир. Не «забыть», а «сделать частью себя».</p></div>
-        <div><b>Когда к врачу</b><p>Острое горе не ослабевает через 6 месяцев — возможно расстройство горя (МКБ-11: 6B42). Лечится.</p></div>
+        <div><b>Устойчивость</b><p>Джордж Бонанно: большинство людей после утраты довольно быстро возвращаются к обычной жизни. Это не чёрствость.</p></div>
+        <div><b>Продолжение связи</b><p>Образ умершего встраивается во внутренний мир. Не «отпустить», а сделать частью себя.</p></div>
+        <div><b>Когда к врачу</b><p>Если острое горе не ослабевает полгода и больше — это может быть пролонгированное расстройство горя (МКБ-11: 6B42). Оно лечится.</p></div>
       </div>
     </section>
 
-    <section class="appx" data-roman="E" data-title="Подготовка">
-      <span class="num">appendix E · praeparatio</span>
+    <section class="appx" data-roman="F" data-title="Подготовка">
+      <span class="num">appendix F · praeparatio</span>
       <h2>Как подготовиться: <em>пять шагов</em></h2>
       <ol class="shields">
-        <li><span class="shield-num">01</span><strong class="shield-title">Завещание</strong><p>Юридически оформленная воля снимает конфликты и защищает твои решения.</p></li>
-        <li><span class="shield-num">02</span><strong class="shield-title">Живая воля</strong><p>Документ о пожеланиях насчёт реанимации и ИВЛ — если не сможешь говорить.</p></li>
-        <li><span class="shield-num">03</span><strong class="shield-title">Разговор</strong><p>Поговори с близкими. Тяжело один раз — снимает огромный груз со всех.</p></li>
-        <li><span class="shield-num">04</span><strong class="shield-title">Цифровое наследие</strong><p>Google и Apple позволяют назначить «наследника аккаунта».</p></li>
-        <li><span class="shield-num">05</span><strong class="shield-title">Донорство</strong><p>Решение спасает до 8 жизней. В России — презумпция согласия.</p></li>
+        <li><span class="shield-num">I</span><strong class="shield-title">Завещание</strong><p>Оформленная воля снимает конфликты и защищает твои решения.</p></li>
+        <li><span class="shield-num">II</span><strong class="shield-title">Пожелания о лечении</strong><p>Запиши, хочешь ли реанимацию и ИВЛ, если не сможешь сказать сам, — и кому доверяешь решать.</p></li>
+        <li><span class="shield-num">III</span><strong class="shield-title">Разговор</strong><p>Поговори с близкими. Тяжело один раз — и снимает огромный груз со всех.</p></li>
+        <li><span class="shield-num">IV</span><strong class="shield-title">Цифровое наследие</strong><p>Google и Apple позволяют назначить доверенное лицо для аккаунта. Пароли — в менеджер с доступом для наследника.</p></li>
+        <li><span class="shield-num">V</span><strong class="shield-title">Донорство</strong><p>Один донор может спасти до восьми жизней. В России действует презумпция согласия; несогласие можно заявить заранее.</p></li>
       </ol>
     </section>
 
-    <section class="appx" data-roman="F" data-title="Философия">
-      <span class="num">appendix F · philosophia mortis</span>
+    <section class="appx" data-roman="G" data-title="Философия">
+      <span class="num">appendix G · philosophia mortis</span>
       <h2>Философия: <em>шесть позиций</em></h2>
       <dl class="gloss">
-        <dt style="--i:0">Эпикур</dt><dd style="--i:0">«Когда смерть — меня нет, когда я — смерти нет». Смерть не может быть злом для умершего.</dd>
-        <dt style="--i:1">Хайдеггер</dt><dd style="--i:1">«Бытие-к-смерти»: осознание конечности делает жизнь подлинной.</dd>
-        <dt style="--i:2">Буддизм</dt><dd style="--i:2">Смерть — переход. Нет неизменного «я», которое умирает. Страдание — от цепляния.</dd>
-        <dt style="--i:3">Стоицизм</dt><dd style="--i:3"><i>Memento mori</i>: помни о смерти каждый день — чтобы ценить каждый час.</dd>
-        <dt style="--i:4">Камю</dt><dd style="--i:4">Абсурд: смерть — часть абсурда, не ответ на него. Бунт — достоинство.</dd>
-        <dt style="--i:5">Левинас</dt><dd style="--i:5">Смерть другого важнее моей. Ответственность за другого делает нас людьми.</dd>
+        <dt style="--i:0">Эпикур</dt><dd style="--i:0">«Когда есть мы, смерти нет; когда есть смерть, нас нет». Смерть не может быть злом для умершего.</dd>
+        <dt style="--i:1">Стоики</dt><dd style="--i:1"><i>Memento mori</i>: помни о смерти каждый день — чтобы ценить каждый час. «Не то чтобы мало у нас времени, а много мы его теряем» (Сенека).</dd>
+        <dt style="--i:2">Буддизм</dt><dd style="--i:2">Нет неизменного «я», которое могло бы умереть. Страдание — от цепляния.</dd>
+        <dt style="--i:3">Монтень</dt><dd style="--i:3">«Философствовать — значит учиться умирать». Кто научился умирать, разучился быть рабом.</dd>
+        <dt style="--i:4">Хайдеггер</dt><dd style="--i:4">«Бытие-к-смерти»: только осознание конечности делает жизнь подлинной.</dd>
+        <dt style="--i:5">Камю</dt><dd style="--i:5">Смерть — часть абсурда, а не ответ на него. Достоинство — в бунте и в жизни вопреки.</dd>
       </dl>
     </section>
 
     <footer class="colophon" id="sources">
-      <p class="rule">· · · ✦ · · ·</p>
+      <p class="rule">· · · ✝ · · ·</p>
       <span class="num">fontes · источники</span>
       <ol class="sources">
-        <li>Zemmar A. et al. <i>PNAS</i>, 2023.</li>
-        <li>van Lommel P. et al. <i>Lancet</i>, 2001.</li>
-        <li>Parnia S. et al. AWARE. <i>Resuscitation</i>, 2014.</li>
-        <li>Andrijevic D. et al. OrganEx. <i>Nature</i>, 2022.</li>
-        <li>Bonanno G. A. The Other Side of Sadness. <i>Basic Books</i>, 2009.</li>
-        <li>Yalom I. Staring at the Sun. <i>Jossey-Bass</i>, 2008.</li>
-        <li>Greenberg J. et al. Terror Management Theory. <i>J Pers Soc Psychol</i>, 1986.</li>
-        <li>WHO. Palliative care fact sheet. 2020.</li>
+        <li>Sender R., Milo R. The distribution of cellular turnover in the human body. <i>Nature Medicine</i>, 2021.</li>
+        <li>Xu G. et al. Surge of neurophysiological coupling and connectivity of gamma oscillations in the dying human brain. <i>PNAS</i>, 2023.</li>
+        <li>Vicente R. et al. Enhanced interplay of neuronal coherence and coupling in the dying human brain. <i>Frontiers in Aging Neuroscience</i>, 2022.</li>
+        <li>van Lommel P. et al. Near-death experience in survivors of cardiac arrest. <i>The Lancet</i>, 2001.</li>
+        <li>Parnia S. et al. AWARE — AWAreness during REsuscitation. <i>Resuscitation</i>, 2014.</li>
+        <li>Andrijevic D. et al. Cellular recovery after prolonged warm ischaemia of the whole body. <i>Nature</i>, 2022.</li>
+        <li>Pozhitkov A. E. et al. Tracing the dynamics of gene transcripts after organismal death. <i>Open Biology</i>, 2017.</li>
+        <li>Latil M. et al. Skeletal muscle stem cells adopt a dormant cell state post mortem and retain regenerative capacity. <i>Nature Communications</i>, 2012.</li>
+        <li>Wilson A. et al. Time-lapse imaging of human decomposition (AFTER). <i>Forensic Science International: Synergy</i>, 2019.</li>
+        <li>Blundon E. G. et al. Electrophysiological evidence of preserved hearing at the end of life. <i>Scientific Reports</i>, 2020.</li>
+        <li>WHO. Global Health Estimates: leading causes of death, 2000–2019.</li>
+        <li>UN. World Population Prospects 2024; Our World in Data — Life expectancy.</li>
+        <li>Kaneda T., Haub C. How many people have ever lived on Earth? <i>Population Reference Bureau</i>, 2022.</li>
+        <li>Ad Hoc Committee of the Harvard Medical School. A definition of irreversible coma. <i>JAMA</i>, 1968.</li>
+        <li>Byock I. <i>The Four Things That Matter Most</i>, 2004. · Ware B. <i>The Top Five Regrets of the Dying</i>, 2011.</li>
+        <li>Bonanno G. A. <i>The Other Side of Sadness</i>, 2009. · Yalom I. <i>Staring at the Sun</i>, 2008.</li>
+        <li>Greenberg J., Pyszczynski T., Solomon S. Terror management theory, 1986.</li>
+        <li>ВОЗ. МКБ-11, 6B42 — пролонгированное расстройство горя.</li>
       </ol>
-      <p class="small">MORS · atlas mortis et transitus · научно-популярная визуализация, не медицинская консультация.</p>
-      <button class="again" id="again2">[ ↑ в начало ]</button>
+      <p class="small">MORS · atlas mortis et transitus · научно-популярная визуализация, не медицинская консультация. Цифры округлены; везде, где наука спорит, сказано об этом.</p>
+      <button class="again" id="again2" type="button">[ ↑ в начало ]</button>
     </footer>
 
   </main>
 
-  <noscript><p style="color:#9e968a;text-align:center;padding:40px;font-family:monospace">Для атласа нужен JavaScript.</p></noscript>
+  <noscript><p class="noscript">Для атласа нужен JavaScript — без него не загорятся свечи и не нарисуются графики.</p></noscript>
+  <script src="zine.js"></script>
   <script src="main.js"></script>
 </body>
 </html>
