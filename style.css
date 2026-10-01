@@ -584,6 +584,7 @@ body.has-cursor .again { cursor: none; }
 .again:focus-visible { outline: 2px dashed var(--ember); outline-offset: 3px; }
 
 .small { font-size: .85rem; color: var(--dim); line-height: 1.6; }
+.small a { color: var(--bone); text-decoration: none; border-bottom: 1px dashed var(--ember); white-space: nowrap; }
 .paper .small, .card .small { color: var(--ink2) !important; margin-top: 12px; }
 
 /* ── KICKER ── */
